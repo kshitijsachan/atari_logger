@@ -7,13 +7,20 @@ from enum import Enum
 from gym import logger
 from pygame.locals import VIDEORESIZE
 
+class Pause(Enum):
+    MANUAL = 0
+    IDLE = 1
+
+class State(Enum):
+    RUNNING = 0 
+    MANUAL_PAUSE = 1
+    IDLE_PAUSE = 2 
+    WAIT_FOR_RESET = 3
+    QUIT = 4
+
 class LoggerEnv(gym.Wrapper):
     @dataclass
     class EpisodeData:
-        class Pause(Enum):
-            MANUAL = 0
-            IDLE = 1
-
         init_ram_state: InitVar[np.ndarray]
         episode_number: int = 0
         absolute_frame_number: int = 0
@@ -128,12 +135,7 @@ class LoggerEnv(gym.Wrapper):
     def mark_not_idle(self):
         self.num_noops = 0
 
-class State(Enum):
-        RUNNING = 0 
-        MANUAL_PAUSE = 1
-        IDLE_PAUSE = 2 
-        WAIT_FOR_RESET = 3
-        QUIT = 4
+
 
 class Play:
     def __init__(self, env: LoggerEnv, fps=60, zoom=4):
@@ -182,6 +184,7 @@ class Play:
                 self.env.mark_not_idle()
             elif self.state == State.WAIT_FOR_RESET and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 self.state = State.RUNNING
+                self.env.reset()
             elif self.state == State.RUNNING:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
@@ -189,6 +192,7 @@ class Play:
                     elif event.key == pygame.K_p:
                         self.state = State.MANUAL_PAUSE
                         self.pressed_keys = []
+                        self.env.log.log_pause(Pause.MANUAL)
                     elif event.key in self.action_keys:
                         self.pressed_keys.append(event.key)
                 elif event.type == pygame.KEYUP and event.key in self.action_keys:
@@ -199,6 +203,7 @@ class Play:
             action = self.keys_to_action.get(tuple(sorted(self.pressed_keys)), 0)
             if action == 0 and self.env.is_idle():
                 self.state = State.IDLE_PAUSE
+                self.env.log.log_pause(Pause.IDLE)
             else:
                 obs, rew, env_done, info = self.env.step(action)
                 if env_done:
