@@ -1,6 +1,8 @@
 import gym, ale_py, os, ipdb, argparse, pygame, pickle
 import numpy as np
 
+from timer import Timer
+
 from dataclasses import dataclass, field, InitVar
 from typing import List, Tuple
 from enum import Enum
@@ -99,7 +101,6 @@ class LoggerEnv(gym.Wrapper):
     def _save_screen(self):
         png_filepath = os.path.join(self.image_folder,
                 f"{self.log.absolute_frame_number}_ep={self.log.episode_number}_frame={self.log.episode_frame_number}.png")
-        print(png_filepath)
         self.ale_env.saveScreenPNG(png_filepath)
 
     def step(self, action):
@@ -158,11 +159,16 @@ class Play:
 
     def play(self):
         clock = pygame.time.Clock()
-        while self.state != State.QUIT:
-            self._update_screen()
-            self._take_action()
-            self._handle_events()
-            clock.tick(self.fps)
+        with Timer('total'):
+            while self.state != State.QUIT:
+                with Timer('_update_screen'):
+                    self._update_screen()
+                with Timer('_take_action'):
+                    self._take_action()
+                with Timer('_handle_events'):
+                    self._handle_events()
+                clock.tick(self.fps)
+        Timer.print_stats()
         pygame.quit()
         self.env.graceful_exit()
 
@@ -252,7 +258,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     env = gym.make(args.game_name)
-    env = LoggerEnv(env, args.log_folder, args.user_id)
+    env.reset()
+    # env = LoggerEnv(env, args.log_folder, args.user_id)
 
     controller = Play(env)
     controller.play()
