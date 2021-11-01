@@ -103,11 +103,16 @@ class LoggerEnv(gym.Wrapper):
         self.ale_env.saveScreenPNG(png_filepath)
 
     def step(self, action):
+        obs, reward, done, info = super().step(action)
+
+        # Track idleness
         if action == 0:
             self.num_noops += 1
+            if self.num_noops == 1000:
+                info['idle'] = True
+                self.num_noops = 0
         else:
             self.num_noops = 0
-        obs, reward, done, info = super().step(action)
 
         self.log.step(self.ale_env.getRAM(), action, reward)
         self._save_screen()
@@ -129,17 +134,10 @@ class LoggerEnv(gym.Wrapper):
             pickle.dump(self.log, f)
             print("Exit successful: Dumped log to .backup file")
 
-    def is_idle(self):
-        return self.num_noops > 1000
-
-    def mark_not_idle(self):
-        self.num_noops = 0
-
-
 
 class Play:
-    def __init__(self, env: LoggerEnv, fps=60, zoom=4):
-        pygame.init()
+    def __init__(self, env: LoggerEnv, fps=60, zoom=3):
+        pygame.font.init()
         self.env = env
         rendered = self.env.render(mode="rgb_array")
         
@@ -160,7 +158,6 @@ class Play:
 
     def play(self):
         clock = pygame.time.Clock()
-
         while self.state != State.QUIT:
             self._update_screen()
             self._take_action()
@@ -181,7 +178,6 @@ class Play:
                 self.state = State.RUNNING
             elif self.state == State.IDLE_PAUSE and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 self.state = State.RUNNING
-                self.env.mark_not_idle()
             elif self.state == State.WAIT_FOR_RESET and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 self.state = State.RUNNING
                 self.env.reset()
@@ -201,13 +197,12 @@ class Play:
     def _take_action(self):
         if self.state == State.RUNNING:
             action = self.keys_to_action.get(tuple(sorted(self.pressed_keys)), 0)
-            if action == 0 and self.env.is_idle():
+            obs, rew, env_done, info = self.env.step(action)
+            if 'idle' in info:
                 self.state = State.IDLE_PAUSE
                 self.env.log.log_pause(Pause.IDLE)
-            else:
-                obs, rew, env_done, info = self.env.step(action)
-                if env_done:
-                    self.state = State.WAIT_FOR_RESET
+            elif env_done:
+                self.state = State.WAIT_FOR_RESET
 
     def _update_screen(self):
         if self.state == State.RUNNING:
