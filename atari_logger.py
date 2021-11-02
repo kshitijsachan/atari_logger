@@ -159,14 +159,16 @@ class Play:
 
     def play(self):
         clock = pygame.time.Clock()
+        i = 0
         with Timer('total'):
             while self.state != State.QUIT:
-                with Timer('_update_screen'):
-                    self._update_screen()
-                with Timer('_take_action'):
-                    self._take_action()
-                with Timer('_handle_events'):
-                    self._handle_events()
+                i += 1
+                if i > 990:
+                    print("FPS: ", self.fps)
+                    break
+                self._update_screen()
+                self._take_action()
+                self._handle_events()
                 clock.tick(self.fps)
         Timer.print_stats()
         pygame.quit()
@@ -216,8 +218,7 @@ class Play:
             arr_min, arr_max = arr.min(), arr.max()
             arr = 255.0 * (arr - arr_min) / (arr_max - arr_min)
             pyg_img = pygame.surfarray.make_surface(arr.swapaxes(0, 1))
-            pyg_img = pygame.transform.scale(pyg_img, self.video_size)
-            self.screen.blit(pyg_img, (0, 0))
+            pygame.transform.scale(pyg_img, self.video_size, self.screen)
         elif self.state == State.MANUAL_PAUSE:
             header = pygame.font.SysFont('Consolas', 35).render('Paused', True, pygame.color.Color('Green'))
             subtext = pygame.font.SysFont('Consolas', 20).render('Press [r] to resume', True, pygame.color.Color('Green'))
@@ -258,8 +259,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     env = gym.make(args.game_name)
-    env.reset()
-    # env = LoggerEnv(env, args.log_folder, args.user_id)
+    env = LoggerEnv(env, args.log_folder, args.user_id)
 
-    controller = Play(env)
-    controller.play()
+    from gym.utils import play
+    play.play(env, fps=60)
+
+    # controller = Play(env)
+    # controller.play()
