@@ -1,8 +1,9 @@
-import gym, ale_py, os, ipdb, argparse, pygame, pickle
+import gym, ale_py, os, ipdb, argparse, pygame, pickle, time
 import numpy as np
-
+import matplotlib.pyplot as plt
 from timer import Timer
 
+from collections import deque
 from dataclasses import dataclass, field, InitVar
 from typing import List, Tuple
 from enum import Enum
@@ -24,29 +25,35 @@ class LoggerEnv(gym.Wrapper):
     @dataclass
     class EpisodeData:
         init_ram_state: InitVar[np.ndarray]
+        init_image_state: InitVar[np.ndarray]
         episode_number: int = 0
         absolute_frame_number: int = 0
         episode_frame_number: int = 0
         RAM_states: List[np.ndarray] = field(default_factory=list)
+        image_states: List[np.ndarray] = field(default_factory=list)
         actions: List[int] = field(default_factory=list)
         rewards: List[float] = field(default_factory=list)
         pauses: List[Tuple[int, Pause]] = field(default_factory=list)
 
-        def __post_init__(self, init_ram_state):
+        def __post_init__(self, init_ram_state, init_image_state):
             self.RAM_states.append(init_ram_state)
+            self.image_states.append(init_image_state)
 
-        def step(self, ram_state, a, r):
+        def step(self, ram_state, image_state, a, r):
             self.absolute_frame_number += 1
             self.episode_frame_number += 1
             self.RAM_states.append(ram_state)
+            self.image_states.append(image_state)
             self.actions.append(a)
             self.rewards.append(r)
+            ipdb.set_trace()
 
-        def reset(self, init_ram_state):
+        def reset(self, init_ram_state, init_image_state):
             self.absolute_frame_number += 1
             self.episode_frame_number = 1
             self.episode_number += 1
             self.RAM_states = [init_ram_state]
+            self.image_states = [init_image_state]
             self.actions = []
             self.rewards = []
             self.pauses = []
@@ -59,6 +66,7 @@ class LoggerEnv(gym.Wrapper):
             return (
                 self.episode_number, 
                 absolute_first_frame_of_episode,
+                self.image_states,
                 self.RAM_states,
                 self.actions,
                 self.rewards,
@@ -86,14 +94,14 @@ class LoggerEnv(gym.Wrapper):
 
         # Reset env and initialize logging variables, either from previous 
         # interrupted run or fresh start
-        env.reset()
+        init_image_state = env.reset()
         try:
             with open(self.reset_pickle_file, 'rb') as f:
                 self.log = pickle.load(f)
                 for i, ram in enumerate(self.log.RAM_states[-1]):
                     self.ale_env.setRAM(i, ram)
         except FileNotFoundError:
-            self.log = self.EpisodeData(self.ale_env.getRAM())
+            self.log = self.EpisodeData(self.ale_env.getRAM(), init_image_state)
 
         # track how long player has been idle for
         self.num_noops = 0
@@ -115,8 +123,8 @@ class LoggerEnv(gym.Wrapper):
         else:
             self.num_noops = 0
 
-        self.log.step(self.ale_env.getRAM(), action, reward)
-        self._save_screen()
+        self.log.step(self.ale_env.getRAM(), obs, action, reward)
+        # self._save_screen()
 
         # write episode data to pickle file
         if done:
@@ -126,8 +134,8 @@ class LoggerEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         observations = super().reset(**kwargs)
-        self.log.reset(self.ale_env.getRAM())
-        self._save_screen()
+        self.log.reset(self.ale_env.getRAM(), observations)
+        # self._save_screen()
         return observations
 
     def graceful_exit(self):
@@ -135,15 +143,61 @@ class LoggerEnv(gym.Wrapper):
             pickle.dump(self.log, f)
             print("Exit successful: Dumped log to .backup file")
 
+class FPSTracker:
+    num_frames = 3000
+    observed_iter_times = []
+
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        end = time.time()
+        self.observed_iter_times.append(end - self.start)
+        if len(self.observed_iter_times) == self.num_frames:
+            plt.plot(range(self.num_frames), 1 / np.array(self.observed_iter_times))
+            plt.savefig("2x_zoom.png")
+            plt.title("zoom=2x")
+            ipdb.set_trace()
+
+class MovingAverage:
+    def __init__(self, horizon):
+        self.d = deque()
+        self.curr_sum = 0
+        self.horizon = horizon
+
+    def update(self, val):
+        self.curr_sum += val
+        self.d.append(val)
+        if len(self.d) > self.horizon:
+            self.curr_sum -= self.d.popleft()
+            return self.curr_sum / self.horizon
+
+class FPSEnforcer:
+    avg = MovingAverage(300)
+    goal = 1/55
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        curr_avg = self.avg.update(time.time() - self.start)
+        if curr_avg is not None and curr_avg > self.goal:
+            raise ValueError(1 / curr_avg, "Loop is too slow")
+
 
 class Play:
-    def __init__(self, env: LoggerEnv, fps=60, zoom=3):
+    def __init__(self, env: LoggerEnv, fps=60, zoom=4):
         pygame.font.init()
         self.env = env
         rendered = self.env.render(mode="rgb_array")
         
         self.fps = fps
-        self.video_size = int(rendered.shape[1] * zoom), int(rendered.shape[0] * zoom)
+        self.video_size = int(rendered.shape[0] * zoom), int(rendered.shape[1] * zoom)
         self.screen = pygame.display.set_mode(self.video_size)
         self.state = State.RUNNING
         self.pressed_keys = []
@@ -159,17 +213,16 @@ class Play:
 
     def play(self):
         clock = pygame.time.Clock()
-        i = 0
-        with Timer('total'):
-            while self.state != State.QUIT:
-                i += 1
-                if i > 990:
-                    print("FPS: ", self.fps)
-                    break
-                self._update_screen()
-                self._take_action()
-                self._handle_events()
-                clock.tick(self.fps)
+        while self.state != State.QUIT:
+            with Timer('total'):
+                with Timer('update'):
+                    self._update_screen()
+                with Timer('events'):
+                    self._handle_events()
+                with Timer('action'):
+                    self._take_action()
+                with Timer('clock'):
+                    clock.tick(self.fps)
         Timer.print_stats()
         pygame.quit()
         self.env.graceful_exit()
@@ -215,9 +268,11 @@ class Play:
     def _update_screen(self):
         if self.state == State.RUNNING:
             arr = self.env.render(mode="rgb_array")
-            arr_min, arr_max = arr.min(), arr.max()
-            arr = 255.0 * (arr - arr_min) / (arr_max - arr_min)
-            pyg_img = pygame.surfarray.make_surface(arr.swapaxes(0, 1))
+            arr_scale = 255.0 / 236
+            arr = arr * arr_scale
+            arr = arr.swapaxes(0, 1)
+            pyg_img = pygame.surfarray.make_surface(arr)
+            # pyg_img = pygame.surfarray.make_surface(arr.swapaxes(0, 1))
             pygame.transform.scale(pyg_img, self.video_size, self.screen)
         elif self.state == State.MANUAL_PAUSE:
             header = pygame.font.SysFont('Consolas', 35).render('Paused', True, pygame.color.Color('Green'))
@@ -261,8 +316,8 @@ if __name__ == "__main__":
     env = gym.make(args.game_name)
     env = LoggerEnv(env, args.log_folder, args.user_id)
 
-    from gym.utils import play
-    play.play(env, fps=60)
+    # from gym.utils import play
+    # play.play(env, fps=80, zoom=3)
 
-    # controller = Play(env)
-    # controller.play()
+    controller = Play(env)
+    controller.play()
