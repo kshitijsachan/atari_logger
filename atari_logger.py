@@ -1,8 +1,9 @@
-import gym, ale_py, os, ipdb, argparse, pygame, pickle, time
+import gym, ale_py, os, ipdb, argparse, pygame, pickle, time, envlogger
 import numpy as np
-import matplotlib.pyplot as plt
-from timer import Timer
+# import matplotlib.pyplot as plt
 
+from timer import Timer
+from bsuite.utils import gym_wrapper
 from collections import deque
 from dataclasses import dataclass, field, InitVar
 from typing import List, Tuple
@@ -123,18 +124,18 @@ class LoggerEnv(gym.Wrapper):
         else:
             self.num_noops = 0
 
-        self.log.step(self.ale_env.getRAM(), obs, action, reward)
+        # self.log.step(self.ale_env.getRAM(), obs, action, reward)
         # self._save_screen()
 
         # write episode data to pickle file
-        if done:
-            with open(self.data_pickle_file, 'ab') as f:
-                pickle.dump(self.log.get_pickle_data(), f)
+        # if done:
+        #     with open(self.data_pickle_file, 'ab') as f:
+        #         pickle.dump(self.log.get_pickle_data(), f)
         return obs, reward, done, info
 
     def reset(self, **kwargs):
         observations = super().reset(**kwargs)
-        self.log.reset(self.ale_env.getRAM(), observations)
+        # self.log.reset(self.ale_env.getRAM(), observations)
         # self._save_screen()
         return observations
 
@@ -189,7 +190,6 @@ class FPSEnforcer:
         if curr_avg is not None and curr_avg > self.goal:
             raise ValueError(1 / curr_avg, "Loop is too slow")
 
-
 class Play:
     def __init__(self, env: LoggerEnv, fps=60, zoom=4):
         pygame.font.init()
@@ -211,19 +211,14 @@ class Play:
         self.keys_to_action = keys_to_action
         self.action_keys = set(sum(map(list, keys_to_action.keys()), []))
 
-    def play(self):
+    def play(self, datadir):
         clock = pygame.time.Clock()
-        while self.state != State.QUIT:
-            with Timer('total'):
-                with Timer('update'):
-                    self._update_screen()
-                with Timer('events'):
-                    self._handle_events()
-                with Timer('action'):
-                    self._take_action()
-                with Timer('clock'):
-                    clock.tick(self.fps)
-        Timer.print_stats()
+        with envlogger.EnvLogger(env, data_directory=datadir, step_fn=step_fn) as env:
+            while self.state != State.QUIT:
+                self._update_screen()
+                self._handle_events()
+                self._take_action()
+                clock.tick(self.fps)
         pygame.quit()
         self.env.graceful_exit()
 
@@ -315,9 +310,10 @@ if __name__ == "__main__":
 
     env = gym.make(args.game_name)
     env = LoggerEnv(env, args.log_folder, args.user_id)
+    env = gym_wrapper.DMEnvFromGym(env)
 
     # from gym.utils import play
     # play.play(env, fps=80, zoom=3)
 
     controller = Play(env)
-    controller.play()
+    controller.play(args.log_folder)
