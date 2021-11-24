@@ -1,6 +1,5 @@
 import gym, ale_py, os, ipdb, argparse, pygame, pickle, time, envlogger
 import numpy as np
-# import matplotlib.pyplot as plt
 
 from timer import Timer
 from bsuite.utils import gym_wrapper
@@ -156,6 +155,7 @@ class FPSTracker:
         return self
 
     def __exit__(self, *args):
+        import matplotlib.pyplot as plt
         end = time.time()
         self.observed_iter_times.append(end - self.start)
         if len(self.observed_iter_times) == self.num_frames:
@@ -190,6 +190,12 @@ class FPSEnforcer:
         if curr_avg is not None and curr_avg > self.goal:
             raise ValueError(1 / curr_avg, "Loop is too slow")
 
+def step_fn(timestep, action, env):
+    step_type, reward, gamma, image_state = timestep
+    ram_state = env.gym_env.ale.getRAM()
+
+    return {'ram' : ram_state }
+
 class Play:
     def __init__(self, env: LoggerEnv, fps=60, zoom=4):
         pygame.font.init()
@@ -213,12 +219,15 @@ class Play:
 
     def play(self, datadir):
         clock = pygame.time.Clock()
-        with envlogger.EnvLogger(env, data_directory=datadir, step_fn=step_fn) as env:
+        dm_env = gym_wrapper.DMEnvFromGym(env)
+        with envlogger.EnvLogger(dm_env, data_directory=datadir, step_fn=step_fn) as logger_dm_env:
+            self.env = gym_wrapper.GymFromDMEnv(logger_dm_env)
             while self.state != State.QUIT:
-                self._update_screen()
-                self._handle_events()
-                self._take_action()
-                clock.tick(self.fps)
+                with FPSTracker():
+                    self._update_screen()
+                    self._handle_events()
+                    self._take_action()
+                    clock.tick(self.fps)
         pygame.quit()
         self.env.graceful_exit()
 
@@ -310,7 +319,6 @@ if __name__ == "__main__":
 
     env = gym.make(args.game_name)
     env = LoggerEnv(env, args.log_folder, args.user_id)
-    env = gym_wrapper.DMEnvFromGym(env)
 
     # from gym.utils import play
     # play.play(env, fps=80, zoom=3)
