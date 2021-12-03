@@ -1,6 +1,7 @@
-from atari_logger import Play
+from controller import Controller
 
 CONFIG_FILE = "/mnt/c/Users/Suzanne Alden/Desktop/game_config.txt"
+
 
 def parse_args():
     try:
@@ -16,6 +17,7 @@ def parse_args():
     game_name = lines[1]
     return game_name, user_id
 
+
 if __name__ == "__main__":
-    controller = Play(*parse_args())
+    controller = Controller(*parse_args())
     controller.play()
