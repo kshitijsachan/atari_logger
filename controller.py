@@ -128,6 +128,9 @@ class Controller:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.state = State.QUIT
+            # manually override any game resizes
+            elif event.type == pygame.VIDEORESIZE:
+                self.screen = pygame.display.set_mode(self.video_size)
             elif self.state == State.MANUAL_PAUSE and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 self.state = State.RUNNING
             elif self.state == State.IDLE_PAUSE and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
@@ -137,6 +140,7 @@ class Controller:
                 self.state = State.RUNNING
                 self.frame_number = 0
                 self.pauses = []
+                self.pressed_keys = []
                 self.env.reset()
             elif self.state == State.RUNNING:
                 if event.type == pygame.KEYDOWN:
