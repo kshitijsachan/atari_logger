@@ -6,6 +6,7 @@ import gym
 import os
 import pickle
 import pygame
+import time
 from bsuite.utils import gym_wrapper
 from envlogger.backends import schedulers
 from fps_tracker import FPSTracker
@@ -68,6 +69,9 @@ class Controller:
         self.checkpoint_start = False
         self.backup_file_name = 'backup.pkl'
 
+        # track frame number
+        self.last_time = time.time()
+
     @staticmethod
     def _make_env(game_name):
         game_to_env = {
@@ -88,7 +92,10 @@ class Controller:
             if self.checkpoint_start:
                 return {'checkpoint_start': True}
             ram_state = env.gym_env.ale.getRAM()
-            return {'ram': ram_state}
+            curr_time = time.time()
+            frame_rate = 1 / (curr_time - self.last_time)
+            self.last_time = curr_time
+            return {'ram': ram_state, 'fps': frame_rate}
 
         def episode_fn(timestep, action, env):
             return self.pauses
@@ -102,10 +109,10 @@ class Controller:
                                      flush_scheduler=scheduler) as self.env:
                 self._load_backup()
                 self._run_loop()
+                self._write_backup()
         else:
             self._run_loop()
         pygame.quit()
-        self._write_backup()
 
     def _run_loop(self):
         """Handles user actions and updates screen until user closes window"""
@@ -155,6 +162,8 @@ class Controller:
                 if self.num_consecutive_noops == self.idle_threshold:
                     self.state = State.IDLE_PAUSE
                     self._log_pause(Pause.IDLE)
+            else:
+                self.num_consecutive_noops = 0
             self.frame_number += 1
 
     def _update_screen(self):

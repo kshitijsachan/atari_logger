@@ -21,6 +21,8 @@ class FPSTracker:
         import matplotlib.pyplot as plt
         end = time.time()
         self.observed_iter_times.append(end - self.start)
+        if len(self.observed_iter_times) % 300 == 0:
+            print(len(self.observed_iter_times))
         if len(self.observed_iter_times) == self.num_frames:
             observed_fps = 1 / np.array(self.observed_iter_times)
             plt.plot(range(len(observed_fps)), observed_fps)

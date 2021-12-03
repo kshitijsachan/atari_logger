@@ -15,7 +15,8 @@ def parse_args():
 
     user_id = int(lines[0])
     game_name = lines[1]
-    return game_name, user_id
+    logging_dir = '/home/ksachan/log'
+    return game_name, user_id, logging_dir
 
 
 if __name__ == "__main__":
