@@ -1,4 +1,5 @@
 import envlogger
+import matplotlib.pyplot as plt
 import ipdb
 
 from dm_env import StepType
@@ -35,6 +36,16 @@ class Reader:
 
 if __name__ == "__main__":
     reader = Reader()
-    for episode, metadata in reader.read('/home/ksachan/log/MontezumaRevengeNoFrameskip-v4/1'):
-        print(len(episode))
-
+    rewards = []
+    for episode, metadata in reader.read('/home/ksachan/log/MontezumaRevengeNoFrameskip-v4/0'):
+        reward = 0
+        print('episode')
+        for step in episode:
+            if step.timestep.reward is not None:
+                reward += step.timestep.reward
+        rewards.append(reward)
+    plt.plot(rewards)
+    plt.xlim([0, len(rewards)])
+    plt.xlabel("episode #")
+    plt.ylabel("reward")
+    plt.savefig('reward_peter.png')
