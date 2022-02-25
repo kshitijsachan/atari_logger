@@ -2,7 +2,7 @@
 
 # Steps to set up new Lenovo machine with Atari Logger. Follow these before running script
 # 1. Connect to WiFi
-# 2. Download wsl2 using the manual installation steps from the Microsoft website
+# 2. Download wsl2: open powershell as administrator, run `wsl --install`, restart and WAIT (the download will start soon)
 # 3. Download Xlaunch. Open it with all the defaults except check the box saying `No Access Control`. Save the config. Approve the public/private connections with Windows Defender
 # 4. Turn off all Windows malware, weather updates, etc.
 # 5. Clone git repo (you must have done this already to be reading this though...)
