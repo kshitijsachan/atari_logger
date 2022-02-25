@@ -1,6 +1,8 @@
 from controller import Controller
+import os
 
-CONFIG_FILE = "/mnt/c/Users/Suzanne Alden/Desktop/game_config.txt"
+user = os.environ.get("USERNAME").strip()
+CONFIG_FILE = f"/mnt/c/Users/{user}/Desktop/game_config.txt"
 
 
 def parse_args():

@@ -28,7 +28,6 @@ cat <<EOT >> ~/.bashrc
 # X11 Forwarding
 export DISPLAY=$(ip route list default | awk '{print $3}'):0
 export LIBGL_ALWAYS_INDIRECT=1
-export LD_LIBRARY_PATH=/usr/local/lib
 
 # Saving Windows username to be used in python script
 export USERNAME=`cmd.exe /c echo %username%`
