@@ -1,8 +1,9 @@
 bsuite==0.3.5
 dm_env==1.5
 envlogger==1.0.5
-gym==0.21.0
+gym[atari]==0.21.0
 ipdb==0.13.9
 matplotlib==3.4.3
 numpy==1.21.3
 pygame==2.0.2
+AutoROM[accept-rom-license]=0.4.2
