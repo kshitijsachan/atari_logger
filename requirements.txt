@@ -6,4 +6,4 @@ ipdb==0.13.9
 matplotlib==3.4.3
 numpy==1.21.3
 pygame==2.0.2
-AutoROM[accept-rom-license]=0.4.2
+AutoROM[accept-rom-license]==0.4.2
