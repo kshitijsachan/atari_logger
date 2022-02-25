@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Steps to set up new Lenovo machine with Atari Logger. Follow these before running script
 # 1. Connect to WiFi
@@ -11,31 +11,31 @@
 sudo apt-get update
 sudo apt-get install libpython3-dev
 sudo apt-get install python3-venv
-python3.8 -m venv venv
-source venv/bin/activate
-cd atari_logger
+python3.8 -m venv ~/venv
+source ~/venv/bin/activate
+cd ~/atari_logger
 pip install -r requirements.txt
 
 # Download GNU Multiple Precision Library for envlogger
 sudo apt-get install libgmp3-dev
 
 # set up logging folder
-cd
-mkdir log
+mkdir ~/log
 
 # set up bashrc by: 1) enabling X11 Forwarding, 2) saving Windows Username as a bash variable
+USERNAME=`cmd.exe /c echo %username%`
+# deletes trailing carriage return
+USERNAME=${USERNAME%?}
 cat <<EOT >> ~/.bashrc
 # X11 Forwarding
 export DISPLAY=$(ip route list default | awk '{print $3}'):0
 export LIBGL_ALWAYS_INDIRECT=1
 
 # Saving Windows username to be used in python script
-export USERNAME=`cmd.exe /c echo %username%`
+export USERNAME=$USERNAME
 EOT
 
 # set up atari_logger configuration file
-source ~/.bashrc
-cat <<EOT > /mnt/c/Users/$USERNAME/Desktop/game_config.txt
-1
-montezuma_revenge
-EOT
+configfile=/mnt/c/Users/${USERNAME}/Desktop/game_config.txt
+echo "1" > $configfile
+echo -n "montezuma_revenge" >> $configfile
