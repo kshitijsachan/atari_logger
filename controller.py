@@ -179,10 +179,10 @@ class Controller:
             pygame.transform.scale(pyg_img, self.video_size, self.screen)
 
             # display time played so far
-            time_played_sec = time.time() - self.start_time + self.time_offset
-            hours = int(time_played_sec // 3600)
-            minutes = int(time_played_sec // 60)
-            sec = int(time_played_sec % 60)
+            time_played_sec = int(time.time() - self.start_time + self.time_offset)
+            hours = time_played_sec // 3600
+            minutes = (time_played_sec // 60) % 60
+            sec = time_played_sec % 60
             time_played_str = "Time played: %02d:%02d:%02d" % (hours, minutes, sec) 
             bottom_header = pygame.font.SysFont('Consolas', 20).render(time_played_str, True, pygame.color.Color('Green'))
             self.screen.blit(bottom_header, (10, self.video_size[1] - 26))
