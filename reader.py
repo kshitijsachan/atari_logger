@@ -37,15 +37,22 @@ class Reader:
 if __name__ == "__main__":
     reader = Reader()
     rewards = []
-    for episode, metadata in reader.read('/home/ksachan/log/MontezumaRevengeNoFrameskip-v4/0'):
+    cnt = 0
+    for episode, metadata in reader.read('/home/ksachan/log/MontezumaRevengeNoFrameskip-v4/3'):
+        cnt += 1
         reward = 0
-        print('episode')
+        first = True
         for step in episode:
+            if first:
+                seconds = int(step[2]['time'])
+                print_string = f"Episode: {cnt} Time: {seconds // 3600}:{(seconds // 60) % 60}:{seconds % 60}"
+                first = False
             if step.timestep.reward is not None:
                 reward += step.timestep.reward
         rewards.append(reward)
+        print(print_string, f"Reward: {reward}")
     plt.plot(rewards)
     plt.xlim([0, len(rewards)])
     plt.xlabel("episode #")
     plt.ylabel("reward")
-    plt.savefig('reward_peter.png')
+    plt.savefig('rewards.png')

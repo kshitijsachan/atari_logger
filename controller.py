@@ -215,8 +215,9 @@ class Controller:
         with open(os.path.join(self.logging_dir, self.backup_file_name), 'wb') as f:
             last_state = self.env.gym_env.ale.cloneState()
             total_time_played = self.time_offset
-            if self.state == State.RUNNING:
-                total_time_played += time.time() - self.start_time
+            if hasattr(self, 'start_time'):
+                unfinished_episode_time_played = time.time() - self.start_time
+                total_time_played += unfinished_episode_time_played
             pickle.dump((last_state, self.pauses, self.frame_number, total_time_played), f)
 
     def _load_backup(self):
