@@ -1,0 +1,9 @@
+Montezuma's Revenge is an action-adventure game where you play as Panama Joe, exploring the hazardous chambers of Emperor Montezuma's pyramid in search of treasures. Your goal is to guide Panama Joe through 11 increasingly difficult levels, collecting items and tools while avoiding traps and creatures.
+
+Move Panama Joe using the A (left) and D (right) keys, jump with W or spacebar, and climb ladders and ropes by moving into them. You start with 5 lives, and the game ends if you lose them all. Extra lives are earned at 10,000 points (levels 1-3) or 20,000 points (levels 4+).
+
+Inside the pyramid, you'll encounter colored doors that require keys, ladders, ropes, poles, conveyor belts, and disappearing floors. Avoid or eliminate deadly creatures like skulls, snakes, spiders, and mummies. Collect tools and rewards, including keys, swords, torches, amulets (extra lives), and jewels (1000-5000 points each).
+
+The Inventory Window holds up to 5 items. Fill it, then carry the items to the Treasure Room to score big points. But be careful - one hit will cost you a life and all points accumulated in that life!
+
+To succeed, collect valuable items, eliminate creatures, and reach the Treasure Room while avoiding hazards. With each level, new barriers appear, chambers darken, and paths to the Treasure Room change. Try to score as many points as possible and see how far you can get in the perilous pyramid!

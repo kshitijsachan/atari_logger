@@ -1,0 +1,8 @@
+Task:
+You are playing the video game Pong. I have placed you in a loop where I will provide you with the two most recent frames and you need to respond with what key to press. You are controlling the paddle on the right side of the screen.
+
+Controls:
+Respond with one of the following three commands. Respond exactly with that command (without the quotes)
+- 'up' = move paddle up
+- 'down' = move paddle down
+- 'none' = keep paddle in the same position

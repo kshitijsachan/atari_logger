@@ -1,15 +1,16 @@
-from enum import Enum
-
-import ipdb
 import argparse
-import envlogger
-import gym
 import os
 import pickle
-import pygame
 import time
+from enum import Enum
+
+# import envlogger
+import gym
+import ipdb
+import pygame
 from bsuite.utils import gym_wrapper
-from envlogger.backends import schedulers
+
+# from envlogger.backends import schedulers
 from fps_tracker import FPSTracker
 
 
@@ -27,8 +28,17 @@ class State(Enum):
 
 
 class Controller:
-    def __init__(self, game_name, user_id, base_logging_dir, should_log=True,
-                 fps=60, zoom=3, idle_threshold=1000, dump_frequency=3000):
+    def __init__(
+        self,
+        game_name,
+        user_id,
+        base_logging_dir,
+        should_log=True,
+        fps=60,
+        zoom=3,
+        idle_threshold=1000,
+        dump_frequency=3000,
+    ):
         self.fps = fps
         self.idle_threshold = idle_threshold
         self.should_log = should_log
@@ -56,59 +66,67 @@ class Controller:
         elif hasattr(gym_env.unwrapped, "get_keys_to_action"):
             keys_to_action = gym_env.unwrapped.get_keys_to_action()
         else:
-            assert False, f"{gym_env.spec.id} does not have explicit key to action mapping, specify one manually"
+            assert (
+                False
+            ), f"{gym_env.spec.id} does not have explicit key to action mapping, specify one manually"
         self.keys_to_action = keys_to_action
         self.action_keys = set(sum(map(list, keys_to_action.keys()), []))
 
         # track idleness
         self.state = State.RUNNING
-        self.pauses = []  # (most recently seen frame number before pause begins, pause type) List
+        self.pauses = (
+            []
+        )  # (most recently seen frame number before pause begins, pause type) List
         self.frame_number = 0
         self.num_consecutive_noops = 0
 
         # track starting from checkpoint
         self.checkpoint_start = False
-        self.backup_file_name = 'backup.pkl'
+        self.backup_file_name = "backup.pkl"
         self.time_offset = 0
         self.start_time = time.time()
 
         # stop blitting repeatedly on pause
-        self.was_running = True 
+        self.was_running = True
 
     @staticmethod
     def _make_env(game_name):
         game_to_env = {
             "montezuma_revenge": "MontezumaRevengeNoFrameskip-v4",
             "pitfall": "PitfallNoFrameskip-v4",
-            "venture": "VentureNoFrameskip-v4"
+            "venture": "VentureNoFrameskip-v4",
         }
         try:
             env_name = game_to_env[game_name]
             return gym.make(env_name)
         except KeyError:
-            parser.error(f"Unsupported game name: {game_name}\nMust be one of: {list(game_to_env.keys())}")
+            parser.error(
+                f"Unsupported game name: {game_name}\nMust be one of: {list(game_to_env.keys())}"
+            )
 
     def play(self):
         """Main function that turns on logging, runs game, and saves checkpoint"""
 
         def step_fn(timestep, action, env):
             if self.checkpoint_start:
-                return {'checkpoint_start': True}
+                return {"checkpoint_start": True}
             ram_state = env.gym_env.ale.getRAM()
             curr_time = time.time()
             time_played = curr_time - self.start_time + self.time_offset
-            return {'ram': ram_state, 'time': time_played}
+            return {"ram": ram_state, "time": time_played}
 
         def episode_fn(timestep, action, env):
             return self.pauses
 
         scheduler = schedulers.n_step_scheduler(self.dump_frequency)
         if self.should_log:
-            with envlogger.EnvLogger(self.env,
-                                     data_directory=self.logging_dir,
-                                     step_fn=step_fn,
-                                     episode_fn=episode_fn,
-                                     flush_scheduler=scheduler) as self.env:
+            with envlogger.EnvLogger(
+                self.env,
+                data_directory=self.logging_dir,
+                step_fn=step_fn,
+                episode_fn=episode_fn,
+                flush_scheduler=scheduler,
+            ) as self.env:
                 self._load_backup()
                 self._run_loop()
                 self._write_backup()
@@ -133,12 +151,24 @@ class Controller:
             # manually override any game resizes
             elif event.type == pygame.VIDEORESIZE:
                 self.screen = pygame.display.set_mode(self.video_size)
-            elif self.state == State.MANUAL_PAUSE and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            elif (
+                self.state == State.MANUAL_PAUSE
+                and event.type == pygame.KEYDOWN
+                and event.key == pygame.K_r
+            ):
                 self._state_transition(State.RUNNING)
-            elif self.state == State.IDLE_PAUSE and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            elif (
+                self.state == State.IDLE_PAUSE
+                and event.type == pygame.KEYDOWN
+                and event.key == pygame.K_r
+            ):
                 self._state_transition(State.RUNNING)
                 self.num_consecutive_noops = 0
-            elif self.state == State.WAIT_FOR_RESET and event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            elif (
+                self.state == State.WAIT_FOR_RESET
+                and event.type == pygame.KEYDOWN
+                and event.key == pygame.K_r
+            ):
                 self._state_transition(State.RUNNING)
                 self.frame_number = 0
                 self.pauses = []
@@ -183,22 +213,36 @@ class Controller:
             hours = time_played_sec // 3600
             minutes = (time_played_sec // 60) % 60
             sec = time_played_sec % 60
-            time_played_str = "Time played: %02d:%02d:%02d" % (hours, minutes, sec) 
-            bottom_header = pygame.font.SysFont('Consolas', 20).render(time_played_str, True, pygame.color.Color('Green'))
+            time_played_str = "Time played: %02d:%02d:%02d" % (hours, minutes, sec)
+            bottom_header = pygame.font.SysFont("Consolas", 20).render(
+                time_played_str, True, pygame.color.Color("Green")
+            )
             self.screen.blit(bottom_header, (10, self.video_size[1] - 26))
         elif self.state == State.MANUAL_PAUSE:
-            header = pygame.font.SysFont('Consolas', 30).render('Paused', True, pygame.color.Color('Green'))
-            subtext = pygame.font.SysFont('Consolas', 20).render('Press [r] to resume', True, pygame.color.Color('Green'))
+            header = pygame.font.SysFont("Consolas", 30).render(
+                "Paused", True, pygame.color.Color("Green")
+            )
+            subtext = pygame.font.SysFont("Consolas", 20).render(
+                "Press [r] to resume", True, pygame.color.Color("Green")
+            )
             self.screen.blit(header, (10, 5))
             self.screen.blit(subtext, (10, 40))
         elif self.state == State.IDLE_PAUSE:
-            header = pygame.font.SysFont('Consolas', 30).render('Still playing?', True, pygame.color.Color('Green'))
-            subtext = pygame.font.SysFont('Consolas', 20).render('Press [r] to resume', True, pygame.color.Color('Green'))
+            header = pygame.font.SysFont("Consolas", 30).render(
+                "Still playing?", True, pygame.color.Color("Green")
+            )
+            subtext = pygame.font.SysFont("Consolas", 20).render(
+                "Press [r] to resume", True, pygame.color.Color("Green")
+            )
             self.screen.blit(header, (10, 5))
             self.screen.blit(subtext, (10, 40))
         elif self.state == State.WAIT_FOR_RESET:
-            header = pygame.font.SysFont('Consolas', 30).render('Game Over!', True, pygame.color.Color('Green'))
-            subtext = pygame.font.SysFont('Consolas', 20).render('Press [r] to play again', True, pygame.color.Color('Green'))
+            header = pygame.font.SysFont("Consolas", 30).render(
+                "Game Over!", True, pygame.color.Color("Green")
+            )
+            subtext = pygame.font.SysFont("Consolas", 20).render(
+                "Press [r] to play again", True, pygame.color.Color("Green")
+            )
             self.screen.blit(header, (10, 5))
             self.screen.blit(subtext, (10, 40))
 
@@ -212,19 +256,23 @@ class Controller:
 
     def _write_backup(self):
         """Save the last state, pauses during episode, and current frame number to file"""
-        with open(os.path.join(self.logging_dir, self.backup_file_name), 'wb') as f:
+        with open(os.path.join(self.logging_dir, self.backup_file_name), "wb") as f:
             last_state = self.env.gym_env.ale.cloneState()
             total_time_played = self.time_offset
-            if hasattr(self, 'start_time'):
+            if hasattr(self, "start_time"):
                 unfinished_episode_time_played = time.time() - self.start_time
                 total_time_played += unfinished_episode_time_played
-            pickle.dump((last_state, self.pauses, self.frame_number, total_time_played), f)
+            pickle.dump(
+                (last_state, self.pauses, self.frame_number, total_time_played), f
+            )
 
     def _load_backup(self):
         """Load checkpoint if it exists"""
         try:
-            with open(os.path.join(self.logging_dir, self.backup_file_name), 'rb') as f:
-                last_state, self.pauses, self.frame_number, self.time_offset = pickle.load(f)
+            with open(os.path.join(self.logging_dir, self.backup_file_name), "rb") as f:
+                last_state, self.pauses, self.frame_number, self.time_offset = (
+                    pickle.load(f)
+                )
             # need to call `reset` (but tell dm logger to ignore that reset) before loading checkpoint
             self.checkpoint_start = True
             self.env.reset()
@@ -260,8 +308,13 @@ if __name__ == "__main__":
     parser.add_argument("--game_name", type=str)
     parser.add_argument("--user_id", type=int)
     parser.add_argument("--log_folder", type=str)
-    parser.add_argument("--no_log", action='store_true')
+    parser.add_argument("--no_log", action="store_true")
     args = parser.parse_args()
 
-    controller = Controller(game_name=args.game_name, user_id=args.user_id, base_logging_dir=args.log_folder, should_log=not args.no_log)
+    controller = Controller(
+        game_name=args.game_name,
+        user_id=args.user_id,
+        base_logging_dir=args.log_folder,
+        should_log=not args.no_log,
+    )
     controller.play()

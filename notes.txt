@@ -1,0 +1,35 @@
+left paddle:
+16-30: down
+31-50: up
+50-70: down
+70-93: up
+93-121: down
+121-150: still
+150-165: up
+165-184: down
+211-240: up
+240-261: down
+262-283: up
+
+puck:
+16-30: down left
+30-48: up right
+48-60: down right
+60-69: down left
+69-88: up left
+94-120: down right
+121-150: flat left
+151-164: up right
+164-180: down right
+187-210: flat left
+
+right paddle:
+1-57: still
+57-60: down
+117-120: down
+178-182: down
+
+right is_correct:
+31-57: paddle too high (easier to tell later)
+92-117: too high
+211-228: too low (this is an easy one!)
